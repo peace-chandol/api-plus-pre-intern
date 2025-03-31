@@ -2,25 +2,105 @@
 
 package model
 
+import (
+	"fmt"
+	"io"
+	"strconv"
+)
+
 type Mutation struct {
 }
 
-type NewTodo struct {
-	Text   string `json:"text"`
-	UserID string `json:"userId"`
+type Pokemon struct {
+	ID          string        `json:"id"`
+	Name        string        `json:"name"`
+	Description string        `json:"description"`
+	Category    string        `json:"category"`
+	Type        []PokemonType `json:"type"`
+	Abilities   []string      `json:"abilities"`
+}
+
+type PokemonInput struct {
+	ID          *string       `json:"id,omitempty"`
+	Name        string        `json:"name"`
+	Description string        `json:"description"`
+	Category    string        `json:"category"`
+	Type        []PokemonType `json:"type"`
+	Abilities   []string      `json:"abilities"`
 }
 
 type Query struct {
 }
 
-type Todo struct {
-	ID   string `json:"id"`
-	Text string `json:"text"`
-	Done bool   `json:"done"`
-	User *User  `json:"user"`
+type PokemonType string
+
+const (
+	PokemonTypeNormal   PokemonType = "normal"
+	PokemonTypeFire     PokemonType = "fire"
+	PokemonTypeWater    PokemonType = "water"
+	PokemonTypeElectric PokemonType = "electric"
+	PokemonTypeGrass    PokemonType = "grass"
+	PokemonTypeIce      PokemonType = "ice"
+	PokemonTypeFighting PokemonType = "fighting"
+	PokemonTypePoision  PokemonType = "poision"
+	PokemonTypeGround   PokemonType = "ground"
+	PokemonTypeFlying   PokemonType = "flying"
+	PokemonTypePsychic  PokemonType = "psychic"
+	PokemonTypeBug      PokemonType = "bug"
+	PokemonTypeRock     PokemonType = "rock"
+	PokemonTypeGhost    PokemonType = "ghost"
+	PokemonTypeDragon   PokemonType = "dragon"
+	PokemonTypeDark     PokemonType = "dark"
+	PokemonTypeSteel    PokemonType = "steel"
+	PokemonTypeFairy    PokemonType = "fairy"
+)
+
+var AllPokemonType = []PokemonType{
+	PokemonTypeNormal,
+	PokemonTypeFire,
+	PokemonTypeWater,
+	PokemonTypeElectric,
+	PokemonTypeGrass,
+	PokemonTypeIce,
+	PokemonTypeFighting,
+	PokemonTypePoision,
+	PokemonTypeGround,
+	PokemonTypeFlying,
+	PokemonTypePsychic,
+	PokemonTypeBug,
+	PokemonTypeRock,
+	PokemonTypeGhost,
+	PokemonTypeDragon,
+	PokemonTypeDark,
+	PokemonTypeSteel,
+	PokemonTypeFairy,
 }
 
-type User struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+func (e PokemonType) IsValid() bool {
+	switch e {
+	case PokemonTypeNormal, PokemonTypeFire, PokemonTypeWater, PokemonTypeElectric, PokemonTypeGrass, PokemonTypeIce, PokemonTypeFighting, PokemonTypePoision, PokemonTypeGround, PokemonTypeFlying, PokemonTypePsychic, PokemonTypeBug, PokemonTypeRock, PokemonTypeGhost, PokemonTypeDragon, PokemonTypeDark, PokemonTypeSteel, PokemonTypeFairy:
+		return true
+	}
+	return false
+}
+
+func (e PokemonType) String() string {
+	return string(e)
+}
+
+func (e *PokemonType) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = PokemonType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid PokemonType", str)
+	}
+	return nil
+}
+
+func (e PokemonType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
 }
