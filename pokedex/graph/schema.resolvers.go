@@ -13,32 +13,77 @@ import (
 
 // PokemonCreate is the resolver for the pokemonCreate field.
 func (r *mutationResolver) PokemonCreate(ctx context.Context, input model.PokemonInput) (*model.Pokemon, error) {
-	panic(fmt.Errorf("not implemented: PokemonCreate - pokemonCreate"))
+	if input.ID != nil {
+		return nil, fmt.Errorf("id must be null")
+	}
+
+	newPokemon := model.Pokemon{
+		Name:        input.Name,
+		Description: input.Description,
+		Category:    input.Category,
+		Type:        input.Type,
+		Abilities:   input.Abilities,
+	}
+
+	err := r.DB.AddPokemon(&newPokemon)
+	if err != nil {
+		return nil, err
+	}
+
+	return &newPokemon, nil
 }
 
 // PokemonUpdate is the resolver for the pokemonUpdate field.
 func (r *mutationResolver) PokemonUpdate(ctx context.Context, input model.PokemonInput) (*model.Pokemon, error) {
-	panic(fmt.Errorf("not implemented: PokemonUpdate - pokemonUpdate"))
+	if input.ID == nil {
+		return nil, fmt.Errorf("id must not be null")
+	}
+
+	_, err := r.DB.FindPokemonById(*input.ID)
+	if err != nil {
+		return nil, err
+	}
+
+	pokemon := model.Pokemon{
+		ID:          *input.ID,
+		Name:        input.Name,
+		Description: input.Description,
+		Category:    input.Category,
+		Type:        input.Type,
+		Abilities:   input.Abilities,
+	}
+
+	err = r.DB.UpdatePokemon(pokemon)
+	if err != nil {
+		return nil, err
+	}
+
+	return &pokemon, nil
 }
 
 // PokemonDelete is the resolver for the pokemonDelete field.
 func (r *mutationResolver) PokemonDelete(ctx context.Context, id string) (bool, error) {
-	panic(fmt.Errorf("not implemented: PokemonDelete - pokemonDelete"))
+	err := r.DB.DeletePokemon(id)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
 }
 
 // Pokemons is the resolver for the pokemons field.
 func (r *queryResolver) Pokemons(ctx context.Context) ([]*model.Pokemon, error) {
-	panic(fmt.Errorf("not implemented: Pokemons - pokemons"))
+	return r.DB.FindAllPokemons(), nil
 }
 
 // PokemonByID is the resolver for the pokemonById field.
 func (r *queryResolver) PokemonByID(ctx context.Context, id string) (*model.Pokemon, error) {
-	panic(fmt.Errorf("not implemented: PokemonByID - pokemonById"))
+	return r.DB.FindPokemonById(id)
 }
 
 // PokemonByName is the resolver for the pokemonByName field.
 func (r *queryResolver) PokemonByName(ctx context.Context, name string) (*model.Pokemon, error) {
-	panic(fmt.Errorf("not implemented: PokemonByName - pokemonByName"))
+	return r.DB.FindPokemonByName(name)
 }
 
 // Mutation returns MutationResolver implementation.
