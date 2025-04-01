@@ -1,214 +1,212 @@
 package database
 
 import (
-	"context"
-	"database/sql"
 	"log"
+	"os"
+	"strconv"
 
-	"github.com/google/uuid"
-	_ "github.com/mattn/go-sqlite3"
 	"github.com/peace/pokedex/graph/model"
+	"gorm.io/driver/sqlite"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 type Database struct {
-	Conn *sql.DB
+	DB *gorm.DB
 }
 
 func ConnectDB() (*Database, error) {
-	db, err := sql.Open("sqlite3", "./pokedex.db")
+	newLogger := logger.New(
+		log.New(os.Stdout, "\r\n", log.LstdFlags),
+		logger.Config{
+			LogLevel: logger.Info,
+			Colorful: true,
+		},
+	)
+	db, err := gorm.Open(sqlite.Open("./pokedex.db"), &gorm.Config{Logger: newLogger})
 	if err != nil {
 		return nil, err
 	}
 
-	return &Database{Conn: db}, nil
+	if err := db.AutoMigrate(&Pokemon{}, &PokemonType{}, &Ability{}); err != nil {
+		return nil, err
+	}
+
+	return &Database{DB: db}, nil
 }
 
 func InitDB() (*Database, error) {
-	dbStruct, err := ConnectDB()
+	db, err := ConnectDB()
 	if err != nil {
 		return nil, err
 	}
 
-	if err := CreateTables(dbStruct.Conn); err != nil {
-		log.Fatal(err)
-	}
-
-	return dbStruct, nil
+	return db, nil
 }
 
-// Database Function
+// Interacts with database
+//
 
-func (db *Database) AddPokemon(ctx context.Context, pokemon *model.Pokemon) error {
-	newID := uuid.New().String()
-	pokemon.ID = newID
-
-	_, err := db.Conn.ExecContext(ctx, `INSERT INTO pokemons (id, name, description, category) VALUES (?,?,?,?)`, newID, pokemon.Name, pokemon.Description, pokemon.Category)
-	if err != nil {
-		return err
+func (db *Database) AddPokemon(pokemon *model.Pokemon) error {
+	p := Pokemon{
+		Name:        pokemon.Name,
+		Description: pokemon.Description,
+		Category:    pokemon.Category,
 	}
 
-	for _, typeValue := range pokemon.Type {
-		_, err = db.Conn.ExecContext(ctx, `INSERT INTO pokemon_types (pokemon_id, type) VALUES (?,?)`, newID, typeValue.String())
-		if err != nil {
-			return err
+	for _, t := range pokemon.Type {
+		pt := PokemonType{Type: string(t)}
+		if result := db.DB.Create(&pt); result.Error != nil {
+			return result.Error
 		}
+		p.Types = append(p.Types, pt)
 	}
 
-	for _, ability := range pokemon.Abilities {
-		_, err = db.Conn.ExecContext(ctx, `INSERT INTO pokemon_abilities (pokemon_id, ability) VALUES (?,?)`, newID, ability)
-		if err != nil {
-			return err
+	for _, a := range pokemon.Abilities {
+		pa := Ability{Ability: a}
+		if result := db.DB.Create(&pa); result.Error != nil {
+			return result.Error
 		}
+		p.Abilities = append(p.Abilities, pa)
+	}
+
+	if result := db.DB.Create(&p); result.Error != nil {
+		return result.Error
 	}
 
 	return nil
 }
 
-func (db *Database) UpdatePokemon(ctx context.Context, pokemon *model.Pokemon) error {
-	_, err := db.Conn.ExecContext(ctx, `UPDATE pokemons SET name = ?, description = ?, category = ? WHERE id = ?`, pokemon.Name, pokemon.Description, pokemon.Category, pokemon.ID)
-	if err != nil {
-		return err
+func (db *Database) UpdatePokemon(pokemon *model.Pokemon) error {
+	p := Pokemon{}
+	if result := db.DB.First(&p, pokemon.ID); result.Error != nil {
+		return result.Error
+	}
+	p.Name = pokemon.Name
+	p.Description = pokemon.Description
+	p.Category = pokemon.Category
+
+	if result := db.DB.Save(&p); result.Error != nil {
+		return result.Error
 	}
 
-	_, err = db.Conn.ExecContext(ctx, `DELETE FROM pokemon_types WHERE pokemon_id = ?`, pokemon.ID)
-	if err != nil {
-		return err
+	if result := db.DB.Model(&p).Association("Types").Clear(); result != nil {
+		return result
 	}
 
-	_, err = db.Conn.ExecContext(ctx, `DELETE FROM pokemon_abilities WHERE pokemon_id = ?`, pokemon.ID)
-	if err != nil {
-		return err
+	if result := db.DB.Model(&p).Association("Abilities").Clear(); result != nil {
+		return result
 	}
 
-	for _, typeValue := range pokemon.Type {
-		_, err = db.Conn.ExecContext(ctx, `INSERT INTO pokemon_types (pokemon_id, type) VALUES (?,?)`, pokemon.ID, typeValue.String())
-		if err != nil {
-			return err
+	for _, t := range pokemon.Type {
+		pt := PokemonType{Type: string(t)}
+		if result := db.DB.Create(&pt); result.Error != nil {
+			return result.Error
 		}
+		p.Types = append(p.Types, pt)
 	}
 
-	for _, ability := range pokemon.Abilities {
-		_, err = db.Conn.ExecContext(ctx, `INSERT INTO pokemon_abilities (pokemon_id, ability) VALUES (?,?)`, pokemon.ID, ability)
-		if err != nil {
-			return err
+	if result := db.DB.Model(&p).Association("Types").Replace(p.Types); result != nil {
+		return result
+	}
+
+	for _, a := range pokemon.Abilities {
+		pa := Ability{Ability: a}
+		if result := db.DB.Create(&pa); result.Error != nil {
+			return result.Error
 		}
+		p.Abilities = append(p.Abilities, pa)
+	}
+
+	if result := db.DB.Model(&p).Association("Abilities").Replace(p.Abilities); result != nil {
+		return result
 	}
 
 	return nil
 }
 
-func (db *Database) DeletePokemon(ctx context.Context, id string) error {
-	_, err := db.Conn.ExecContext(ctx, `DELETE FROM pokemons WHERE id = ?`, id)
-	return err
+func (db *Database) DeletePokemon(id string) error {
+	if result := db.DB.Delete(&Pokemon{}, id); result.Error != nil {
+		return result.Error
+	}
+
+	return nil
 }
 
-func (db *Database) getPokemonTypes(ctx context.Context, id string) ([]model.PokemonType, error) {
-	types := []model.PokemonType{}
-
-	rows, err := db.Conn.QueryContext(ctx, `SELECT type FROM pokemon_types WHERE pokemon_id = ?`, id)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var pokemonType string
-		if err := rows.Scan(&pokemonType); err != nil {
-			return nil, err
-		}
-
-		types = append(types, model.PokemonType(pokemonType))
+func convertPokemonTypes(types []PokemonType) []model.PokemonType {
+	pokemonTypes := []model.PokemonType{}
+	for _, t := range types {
+		pokemonTypes = append(pokemonTypes, model.PokemonType(t.Type))
 	}
 
-	return types, nil
+	return pokemonTypes
 }
 
-func (db *Database) getPokemonAbilities(ctx context.Context, id string) ([]string, error) {
-	abilities := []string{}
-
-	rows, err := db.Conn.QueryContext(ctx, `SELECT ability FROM pokemon_abilities WHERE pokemon_id = ?`, id)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var ability string
-		if err := rows.Scan(&ability); err != nil {
-			return nil, err
-		}
-
-		abilities = append(abilities, ability)
+func convertPokemonAbilities(abilities []Ability) []string {
+	var pokemonAbilites []string
+	for _, a := range abilities {
+		pokemonAbilites = append(pokemonAbilites, a.Ability)
 	}
 
-	return abilities, nil
+	return pokemonAbilites
 }
 
-func (db *Database) FindAllPokemons(ctx context.Context) ([]*model.Pokemon, error) {
-	pokemons := []*model.Pokemon{}
+func (db *Database) FindAllPokemons() ([]*model.Pokemon, error) {
+	pokemons := []Pokemon{}
 
-	rows, err := db.Conn.QueryContext(ctx, `SELECT id, name, description, category FROM pokemons`)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		pokemon := model.Pokemon{}
-		if err := rows.Scan(&pokemon.ID, &pokemon.Name, &pokemon.Description, &pokemon.Category); err != nil {
-			return nil, err
-		}
-		pokemon.Type, err = db.getPokemonTypes(ctx, pokemon.ID)
-		if err != nil {
-			return nil, err
-		}
-		pokemon.Abilities, err = db.getPokemonAbilities(ctx, pokemon.ID)
-		if err != nil {
-			return nil, err
-		}
-
-		pokemons = append(pokemons, &pokemon)
+	if result := db.DB.Preload("Types").Preload("Abilities").Find(&pokemons); result.Error != nil {
+		return nil, result.Error
 	}
 
-	return pokemons, nil
+	pokemonsModel := []*model.Pokemon{}
+	for _, p := range pokemons {
+		pokemonsModel = append(pokemonsModel, &model.Pokemon{
+			ID:          strconv.FormatUint(uint64(p.ID), 10),
+			Name:        p.Name,
+			Description: p.Description,
+			Category:    p.Category,
+			Type:        convertPokemonTypes(p.Types),
+			Abilities:   convertPokemonAbilities(p.Abilities),
+		})
+	}
+
+	return pokemonsModel, nil
 }
 
-func (db *Database) FindPokemonById(ctx context.Context, id string) (*model.Pokemon, error) {
-	row := db.Conn.QueryRowContext(ctx, `SELECT id, name, description, category FROM pokemons WHERE id = ?`, id)
+func (db *Database) FindPokemonById(id string) (*model.Pokemon, error) {
+	pokemon := Pokemon{}
 
-	pokemon := model.Pokemon{}
-	err := row.Scan(&pokemon.ID, &pokemon.Name, &pokemon.Description, &pokemon.Category)
-	if err != nil {
-		return nil, err
-	}
-	pokemon.Type, err = db.getPokemonTypes(ctx, pokemon.ID)
-	if err != nil {
-		return nil, err
-	}
-	pokemon.Abilities, err = db.getPokemonAbilities(ctx, pokemon.ID)
-	if err != nil {
-		return nil, err
+	if result := db.DB.Preload("Types").Preload("Abilities").First(&pokemon, id); result.Error != nil {
+		return nil, result.Error
 	}
 
-	return &pokemon, nil
+	modelPokemon := model.Pokemon{
+		ID:          strconv.FormatUint(uint64(pokemon.ID), 10),
+		Name:        pokemon.Name,
+		Description: pokemon.Description,
+		Category:    pokemon.Category,
+		Type:        convertPokemonTypes(pokemon.Types),
+		Abilities:   convertPokemonAbilities(pokemon.Abilities),
+	}
+
+	return &modelPokemon, nil
 }
 
-func (db *Database) FindPokemonByName(ctx context.Context, name string) (*model.Pokemon, error) {
-	row := db.Conn.QueryRowContext(ctx, `SELECT id, name, description, category FROM pokemons WHERE name = ?`, name)
+func (db *Database) FindPokemonByName(name string) (*model.Pokemon, error) {
+	var pokemon Pokemon
 
-	pokemon := model.Pokemon{}
-	err := row.Scan(&pokemon.ID, &pokemon.Name, &pokemon.Description, &pokemon.Category)
-	if err != nil {
-		return nil, err
-	}
-	pokemon.Type, err = db.getPokemonTypes(ctx, pokemon.ID)
-	if err != nil {
-		return nil, err
-	}
-	pokemon.Abilities, err = db.getPokemonAbilities(ctx, pokemon.ID)
-	if err != nil {
-		return nil, err
+	if result := db.DB.Preload("Types").Preload("Abilities").Where("name = ?", name).First(&pokemon); result.Error != nil {
+		return nil, result.Error
 	}
 
-	return &pokemon, nil
+	pokemonModel := model.Pokemon{
+		ID:          strconv.FormatUint(uint64(pokemon.ID), 10),
+		Name:        pokemon.Name,
+		Description: pokemon.Description,
+		Category:    pokemon.Category,
+		Type:        convertPokemonTypes(pokemon.Types),
+		Abilities:   convertPokemonAbilities(pokemon.Abilities),
+	}
+
+	return &pokemonModel, nil
 }

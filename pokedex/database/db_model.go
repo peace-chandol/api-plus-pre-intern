@@ -1,31 +1,23 @@
 package database
 
-import (
-	"database/sql"
-)
+import "gorm.io/gorm"
 
-func CreateTables(db *sql.DB) error {
-	createTableSQL := `
-		CREATE TABLE IF NOT EXISTS pokemons (
-    		id TEXT PRIMARY KEY,
-    		name TEXT NOT NULL UNIQUE,
-    		description TEXT NOT NULL,
-    		category TEXT NOT NULL
-		);
+type Pokemon struct {
+	gorm.Model
+	Name        string        `gorm:"unique;not null"`
+	Description string        `gorm:"not null"`
+	Category    string        `gorm:"not null"`
+	Types       []PokemonType `gorm:"many2many:pokemon_pokemon_types;"`
+	Abilities   []Ability     `gorm:"many2many:pokemon_abilities;"`
+}
 
-		CREATE TABLE IF NOT EXISTS pokemon_types (
-			pokemon_id TEXT NOT NULL,
-			type TEXT NOT NULL,
-			FOREIGN KEY (pokemon_id) REFERENCES pokemons (id) ON DELETE CASCADE
-		);
+type PokemonType struct {
+	gorm.Model
+	Type string `gorm:"not null;uniqueIndex"`
+}
 
-		CREATE TABLE IF NOT EXISTS pokemon_abilities (
-			pokemon_id TEXT NOT NULL,
-			ability TEXT NOT NULL,
-			FOREIGN KEY (pokemon_id) REFERENCES pokemons (id) ON DELETE CASCADE
-		);
-	`
-
-	_, err := db.Exec(createTableSQL)
-	return err
+type Ability struct {
+	gorm.Model
+	Ability  string     `gorm:"not null"`
+	Pokemons []*Pokemon `gorm:"many2many:pokemon_abilities;"`
 }

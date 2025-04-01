@@ -25,7 +25,7 @@ func (r *mutationResolver) PokemonCreate(ctx context.Context, input model.Pokemo
 		Abilities:   input.Abilities,
 	}
 
-	err := r.DB.AddPokemon(ctx, &newPokemon)
+	err := r.DB.AddPokemon(&newPokemon)
 	if err != nil {
 		return nil, err
 	}
@@ -39,7 +39,7 @@ func (r *mutationResolver) PokemonUpdate(ctx context.Context, input model.Pokemo
 		return nil, fmt.Errorf("id must not be null")
 	}
 
-	_, err := r.DB.FindPokemonById(ctx, *input.ID)
+	_, err := r.DB.FindPokemonById(*input.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func (r *mutationResolver) PokemonUpdate(ctx context.Context, input model.Pokemo
 		Abilities:   input.Abilities,
 	}
 
-	err = r.DB.UpdatePokemon(ctx, &pokemon)
+	err = r.DB.UpdatePokemon(&pokemon)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func (r *mutationResolver) PokemonUpdate(ctx context.Context, input model.Pokemo
 
 // PokemonDelete is the resolver for the pokemonDelete field.
 func (r *mutationResolver) PokemonDelete(ctx context.Context, id string) (bool, error) {
-	err := r.DB.DeletePokemon(ctx, id)
+	err := r.DB.DeletePokemon(id)
 	if err != nil {
 		return false, err
 	}
@@ -73,17 +73,17 @@ func (r *mutationResolver) PokemonDelete(ctx context.Context, id string) (bool, 
 
 // Pokemons is the resolver for the pokemons field.
 func (r *queryResolver) Pokemons(ctx context.Context) ([]*model.Pokemon, error) {
-	return r.DB.FindAllPokemons(ctx)
+	return r.DB.FindAllPokemons()
 }
 
 // PokemonByID is the resolver for the pokemonById field.
 func (r *queryResolver) PokemonByID(ctx context.Context, id string) (*model.Pokemon, error) {
-	return r.DB.FindPokemonById(ctx, id)
+	return r.DB.FindPokemonById(id)
 }
 
 // PokemonByName is the resolver for the pokemonByName field.
 func (r *queryResolver) PokemonByName(ctx context.Context, name string) (*model.Pokemon, error) {
-	return r.DB.FindPokemonByName(ctx, name)
+	return r.DB.FindPokemonByName(name)
 }
 
 // Mutation returns MutationResolver implementation.
