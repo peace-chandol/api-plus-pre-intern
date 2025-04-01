@@ -10,21 +10,24 @@ import (
 	"github.com/99designs/gqlgen/graphql/handler/transport"
 	"github.com/99designs/gqlgen/graphql/playground"
 	"github.com/go-chi/chi/v5"
+	"github.com/peace/pokedex/database"
 	"github.com/peace/pokedex/graph"
-	"github.com/peace/pokedex/graph/model"
 	"github.com/vektah/gqlparser/v2/ast"
 )
 
 const defaultPort = "8080"
 
 func main() {
+	db, err := database.InitDB()
+	if err != nil {
+		log.Fatalf("Failed to connect to database %s", err)
+	}
+
 	r := chi.NewRouter()
 
 	srv := handler.New(graph.NewExecutableSchema(graph.Config{
 		Resolvers: &graph.Resolver{
-			DB: graph.Database{
-				PokemonsTable: make(map[string]model.Pokemon),
-			},
+			DB: db,
 		}}))
 
 	srv.AddTransport(transport.Options{})

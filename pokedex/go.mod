@@ -8,6 +8,8 @@ require (
 	github.com/vektah/gqlparser/v2 v2.5.23
 )
 
+require github.com/mattn/go-sqlite3 v1.14.25
+
 require (
 	github.com/agnivade/levenshtein v1.2.1 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
