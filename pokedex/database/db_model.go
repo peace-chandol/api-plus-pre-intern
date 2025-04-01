@@ -13,7 +13,8 @@ type Pokemon struct {
 
 type PokemonType struct {
 	gorm.Model
-	Type string `gorm:"not null;uniqueIndex"`
+	Type     string     `gorm:"not null"`
+	Pokemons []*Pokemon `gorm:"many2many:pokemon_pokemon_types;"`
 }
 
 type Ability struct {
