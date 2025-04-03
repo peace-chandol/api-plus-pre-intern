@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -56,7 +58,7 @@ func main() {
 			{
 				Name:      "post",
 				Usage:     "Sends a POST request with an optional JSON payload and headers.",
-				UsageText: "httpcli [--query \"key=value\"] [--header \"key=value\"] post [--json \"{'key1':'value1, 'key2':'value2'}\"] <URL>",
+				UsageText: "httpcli [--query \"key=value\"] [--header \"key=value\"] post [--json \"{'key1':'value1', 'key2':'value2'}\"] <URL>",
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:        "json",
@@ -155,8 +157,18 @@ func httpSendRequest(reqType string, baseUrl string, query cli.StringSlice, head
 	// handle body
 	var bodyParser io.Reader
 	if body != "" {
-		body = strings.ReplaceAll(body, "'", "\"")
-		bodyParser = strings.NewReader(body)
+		var obj map[string]interface{}
+		err := json.Unmarshal([]byte(strings.ReplaceAll(body, "'", "\"")), &obj)
+		if err != nil {
+			log.Fatal("Warning: Body is not valid json")
+			return
+		} else {
+			jsonBody, err := json.Marshal(obj)
+			if err != nil {
+				log.Fatal("JSON marshaling error")
+			}
+			bodyParser = bytes.NewReader(jsonBody)
+		}
 	} else {
 		bodyParser = nil
 	}
