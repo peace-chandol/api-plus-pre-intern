@@ -1,9 +1,11 @@
 package database
 
-import "gorm.io/gorm"
+import (
+	"github.com/google/uuid"
+)
 
 type Pokemon struct {
-	gorm.Model
+	ID          uuid.UUID     `gorm:"type:uuid;primaryKey"`
 	Name        string        `gorm:"unique;not null"`
 	Description string        `gorm:"not null"`
 	Category    string        `gorm:"not null"`
@@ -12,13 +14,13 @@ type Pokemon struct {
 }
 
 type PokemonType struct {
-	gorm.Model
+	ID       uuid.UUID  `gorm:"type:uuid;primaryKey;"`
 	Type     string     `gorm:"not null"`
 	Pokemons []*Pokemon `gorm:"many2many:pokemon_pokemon_types;"`
 }
 
 type Ability struct {
-	gorm.Model
+	ID       uuid.UUID  `gorm:"type:uuid;primaryKey;"`
 	Ability  string     `gorm:"not null"`
 	Pokemons []*Pokemon `gorm:"many2many:pokemon_abilities;"`
 }

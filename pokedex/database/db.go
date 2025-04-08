@@ -3,8 +3,8 @@ package database
 import (
 	"log"
 	"os"
-	"strconv"
 
+	"github.com/google/uuid"
 	"github.com/peace/pokedex/graph/model"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -53,9 +53,11 @@ func (db *Database) AddPokemon(pokemon *model.Pokemon) error {
 		Description: pokemon.Description,
 		Category:    pokemon.Category,
 	}
+	p.ID = uuid.New()
 
 	for _, t := range pokemon.Type {
 		pt := PokemonType{Type: string(t)}
+		pt.ID = uuid.New()
 		if result := db.DB.Create(&pt); result.Error != nil {
 			return result.Error
 		}
@@ -64,6 +66,7 @@ func (db *Database) AddPokemon(pokemon *model.Pokemon) error {
 
 	for _, a := range pokemon.Abilities {
 		pa := Ability{Ability: a}
+		pa.ID = uuid.New()
 		if result := db.DB.Create(&pa); result.Error != nil {
 			return result.Error
 		}
@@ -74,12 +77,14 @@ func (db *Database) AddPokemon(pokemon *model.Pokemon) error {
 		return result.Error
 	}
 
+	pokemon.ID = p.ID.String()
+
 	return nil
 }
 
 func (db *Database) UpdatePokemon(pokemon *model.Pokemon) error {
 	p := Pokemon{}
-	if result := db.DB.First(&p, pokemon.ID); result.Error != nil {
+	if result := db.DB.Where("id = ?", pokemon.ID).First(&p); result.Error != nil {
 		return result.Error
 	}
 	p.Name = pokemon.Name
@@ -100,6 +105,7 @@ func (db *Database) UpdatePokemon(pokemon *model.Pokemon) error {
 
 	for _, t := range pokemon.Type {
 		pt := PokemonType{Type: string(t)}
+		pt.ID = uuid.New()
 		if result := db.DB.Create(&pt); result.Error != nil {
 			return result.Error
 		}
@@ -112,6 +118,7 @@ func (db *Database) UpdatePokemon(pokemon *model.Pokemon) error {
 
 	for _, a := range pokemon.Abilities {
 		pa := Ability{Ability: a}
+		pa.ID = uuid.New()
 		if result := db.DB.Create(&pa); result.Error != nil {
 			return result.Error
 		}
@@ -126,7 +133,7 @@ func (db *Database) UpdatePokemon(pokemon *model.Pokemon) error {
 }
 
 func (db *Database) DeletePokemon(id string) error {
-	if result := db.DB.Delete(&Pokemon{}, id); result.Error != nil {
+	if result := db.DB.Where("id = ?", id).Delete(&Pokemon{}); result.Error != nil {
 		return result.Error
 	}
 
@@ -161,7 +168,7 @@ func (db *Database) FindAllPokemons() ([]*model.Pokemon, error) {
 	pokemonsModel := []*model.Pokemon{}
 	for _, p := range pokemons {
 		pokemonsModel = append(pokemonsModel, &model.Pokemon{
-			ID:          strconv.FormatUint(uint64(p.ID), 10),
+			ID:          p.ID.String(),
 			Name:        p.Name,
 			Description: p.Description,
 			Category:    p.Category,
@@ -176,12 +183,12 @@ func (db *Database) FindAllPokemons() ([]*model.Pokemon, error) {
 func (db *Database) FindPokemonById(id string) (*model.Pokemon, error) {
 	pokemon := Pokemon{}
 
-	if result := db.DB.Preload("Types").Preload("Abilities").First(&pokemon, id); result.Error != nil {
+	if result := db.DB.Preload("Types").Preload("Abilities").Where("ID = ?", id).First(&pokemon); result.Error != nil {
 		return nil, result.Error
 	}
 
 	modelPokemon := model.Pokemon{
-		ID:          strconv.FormatUint(uint64(pokemon.ID), 10),
+		ID:          pokemon.ID.String(),
 		Name:        pokemon.Name,
 		Description: pokemon.Description,
 		Category:    pokemon.Category,
@@ -200,7 +207,7 @@ func (db *Database) FindPokemonByName(name string) (*model.Pokemon, error) {
 	}
 
 	pokemonModel := model.Pokemon{
-		ID:          strconv.FormatUint(uint64(pokemon.ID), 10),
+		ID:          pokemon.ID.String(),
 		Name:        pokemon.Name,
 		Description: pokemon.Description,
 		Category:    pokemon.Category,
