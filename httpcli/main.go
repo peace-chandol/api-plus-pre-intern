@@ -45,11 +45,6 @@ func main() {
 				UsageText: "httpcli [--query \"key=value\"] [--header \"key=value\"] get <URL>",
 				Action: func(cCtx *cli.Context) error {
 					url := cCtx.Args().First()
-
-					// fmt.Println("Get Method")
-					// fmt.Println("URL:", url)
-					// fmt.Println("Queries:", query.Value())
-					// fmt.Println("Headers:", header.Value())
 					httpSendRequest("GET", url, query, header, "")
 
 					return nil
@@ -68,12 +63,6 @@ func main() {
 				},
 				Action: func(cCtx *cli.Context) error {
 					url := cCtx.Args().First()
-
-					// fmt.Println("Post Method")
-					// fmt.Println("URL:", url)
-					// fmt.Println("Queries:", query.Value())
-					// fmt.Println("Headers:", header.Value())
-					// fmt.Println("JSON:", json)
 					httpSendRequest("POST", url, query, header, json)
 
 					return nil
@@ -92,12 +81,6 @@ func main() {
 				},
 				Action: func(cCtx *cli.Context) error {
 					url := cCtx.Args().First()
-
-					// fmt.Println("Put Method")
-					// fmt.Println("URL:", url)
-					// fmt.Println("Queries:", query.Value())
-					// fmt.Println("Headers:", header.Value())
-					// fmt.Println("JSON:", json.Value())
 					httpSendRequest("PUT", url, query, header, json)
 
 					return nil
@@ -109,11 +92,6 @@ func main() {
 				UsageText: "httpcli [--query \"key=value\"] [--header \"key=value\"] delete <URL>",
 				Action: func(cCtx *cli.Context) error {
 					url := cCtx.Args().First()
-
-					// fmt.Println("Delete Method")
-					// fmt.Println("URL:", url)
-					// fmt.Println("Queries:", query.Value())
-					// fmt.Println("Headers:", header.Value())
 					httpSendRequest("DELETE", url, query, header, "")
 
 					return nil
@@ -123,10 +101,6 @@ func main() {
 
 		Action: func(cCtx *cli.Context) error {
 			url := cCtx.Args().First()
-
-			// fmt.Println("URL:", url)
-			// fmt.Println("Queries:", query.Value())
-			// fmt.Println("Headers:", header.Value())
 			httpSendRequest("GET", url, query, header, "")
 
 			return nil
