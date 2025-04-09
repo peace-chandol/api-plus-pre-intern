@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/peace/pokedex/graph/model"
@@ -17,15 +18,37 @@ type Database struct {
 }
 
 const (
-	host     = "localhost"  // or the Docker service name if running in another container
-	port     = 5433         // default PostgreSQL port
-	user     = "myuser"     // as defined in docker-compose.yml
-	password = "mypassword" // as defined in docker-compose.yml
-	dbname   = "mydatabase" // as defined in docker-compose.yml
+	host     = "postgres"   // or the Docker service name if running in another container
+	port     = 5432         // default PostgreSQL port
+	user     = "pokedex"    // as defined in docker-compose.yml
+	password = "password"   // as defined in docker-compose.yml
+	dbname   = "pokedex_db" // as defined in docker-compose.yml
 )
 
+// func ConnectDB() (*Database, error) {
+// 	dsn := fmt.Sprintf("host=%s port=%d user=%s "+"password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
+
+// 	newLogger := logger.New(
+// 		log.New(os.Stdout, "\r\n", log.LstdFlags),
+// 		logger.Config{
+// 			LogLevel: logger.Info,
+// 			Colorful: true,
+// 		},
+// 	)
+
+// 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: newLogger})
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	if err := db.AutoMigrate(&Pokemon{}, &PokemonType{}, &Ability{}); err != nil {
+// 		return nil, err
+// 	}
+
+//		return &Database{DB: db}, nil
+//	}
 func ConnectDB() (*Database, error) {
-	dsn := fmt.Sprintf("host=%s port=%d user=%s "+"password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
+	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
 
 	newLogger := logger.New(
 		log.New(os.Stdout, "\r\n", log.LstdFlags),
@@ -35,7 +58,19 @@ func ConnectDB() (*Database, error) {
 		},
 	)
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: newLogger})
+	var db *gorm.DB
+	var err error
+
+	// Retry loop
+	for i := 0; i < 5; i++ {
+		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: newLogger})
+		if err == nil {
+			break
+		}
+		log.Printf("Retrying DB connection (%d/5): %s", i+1, err)
+		time.Sleep(2 * time.Second)
+	}
+
 	if err != nil {
 		return nil, err
 	}
