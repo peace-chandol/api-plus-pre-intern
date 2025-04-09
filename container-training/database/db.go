@@ -18,35 +18,13 @@ type Database struct {
 }
 
 const (
-	host     = "postgres"   // or the Docker service name if running in another container
-	port     = 5432         // default PostgreSQL port
-	user     = "pokedex"    // as defined in docker-compose.yml
-	password = "password"   // as defined in docker-compose.yml
-	dbname   = "pokedex_db" // as defined in docker-compose.yml
+	host     = "postgres"
+	port     = 5432
+	user     = "pokedex"
+	password = "password"
+	dbname   = "pokedex_db"
 )
 
-// func ConnectDB() (*Database, error) {
-// 	dsn := fmt.Sprintf("host=%s port=%d user=%s "+"password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
-
-// 	newLogger := logger.New(
-// 		log.New(os.Stdout, "\r\n", log.LstdFlags),
-// 		logger.Config{
-// 			LogLevel: logger.Info,
-// 			Colorful: true,
-// 		},
-// 	)
-
-// 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: newLogger})
-// 	if err != nil {
-// 		return nil, err
-// 	}
-
-// 	if err := db.AutoMigrate(&Pokemon{}, &PokemonType{}, &Ability{}); err != nil {
-// 		return nil, err
-// 	}
-
-//		return &Database{DB: db}, nil
-//	}
 func ConnectDB() (*Database, error) {
 	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable", host, port, user, password, dbname)
 
@@ -61,13 +39,11 @@ func ConnectDB() (*Database, error) {
 	var db *gorm.DB
 	var err error
 
-	// Retry loop
 	for i := 0; i < 5; i++ {
 		db, err = gorm.Open(postgres.Open(dsn), &gorm.Config{Logger: newLogger})
 		if err == nil {
 			break
 		}
-		log.Printf("Retrying DB connection (%d/5): %s", i+1, err)
 		time.Sleep(2 * time.Second)
 	}
 
@@ -92,7 +68,6 @@ func InitDB() (*Database, error) {
 }
 
 // Interacts with database
-//
 
 func (db *Database) AddPokemon(pokemon *model.Pokemon) error {
 	p := Pokemon{
@@ -180,11 +155,6 @@ func (db *Database) UpdatePokemon(pokemon *model.Pokemon) error {
 }
 
 func (db *Database) DeletePokemon(id string) error {
-	// if result := db.DB.Where("id = ?", id).Delete(&Pokemon{}); result.Error != nil {
-	// 	return result.Error
-	// }
-
-	// return nil
 	p := Pokemon{}
 	if result := db.DB.Preload("Types").Preload("Abilities").Where("id = ?", id).First(&p); result.Error != nil {
 		return result.Error

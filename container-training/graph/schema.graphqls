@@ -41,7 +41,6 @@ type Mutation {
   pokemonCreate(input: PokemonInput!): Pokemon!
   pokemonUpdate(input: PokemonInput!): Pokemon!
   pokemonDelete(id: ID!): Boolean!
-
 }
 
 type Query {
