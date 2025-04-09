@@ -180,7 +180,25 @@ func (db *Database) UpdatePokemon(pokemon *model.Pokemon) error {
 }
 
 func (db *Database) DeletePokemon(id string) error {
-	if result := db.DB.Where("id = ?", id).Delete(&Pokemon{}); result.Error != nil {
+	// if result := db.DB.Where("id = ?", id).Delete(&Pokemon{}); result.Error != nil {
+	// 	return result.Error
+	// }
+
+	// return nil
+	p := Pokemon{}
+	if result := db.DB.Preload("Types").Preload("Abilities").Where("id = ?", id).First(&p); result.Error != nil {
+		return result.Error
+	}
+
+	if err := db.DB.Model(&p).Association("Types").Clear(); err != nil {
+		return err
+	}
+
+	if err := db.DB.Model(&p).Association("Abilities").Clear(); err != nil {
+		return err
+	}
+
+	if result := db.DB.Delete(&p); result.Error != nil {
 		return result.Error
 	}
 
